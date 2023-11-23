@@ -35,6 +35,17 @@ class Configs(object):
 
         return result
 
+    def __sub__(self, other):
+        result = self.__class__()
+
+        for key in self:
+            if key in other and self[key] == other[key]:
+                continue
+
+            result[key] = self[key]
+
+        return result
+
     def __str__(self):
         config_list = []
 
