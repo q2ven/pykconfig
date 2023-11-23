@@ -35,6 +35,18 @@ class Configs(object):
 
         return result
 
+    def __add__(self, other):
+        result = self.__class__()
+
+        for key in self:
+            result[key] = self[key]
+
+        # The right operand overwrites.
+        for key in other:
+            result[key] = other[key]
+
+        return result
+
     def __sub__(self, other):
         result = self.__class__()
 
