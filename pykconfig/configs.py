@@ -17,8 +17,23 @@ class Configs(object):
     def __iter__(self):
         return iter(self.configs)
 
+    def __contains__(self, key):
+        return key in self.configs
+
     def __getitem__(self, key):
         return self.configs[key]
+
+    def __setitem__(self, key, value):
+        self.configs[key] = value
+
+    def __and__(self, other):
+        result = self.__class__()
+
+        for key in self:
+            if key in other and self[key] == other[key]:
+                result[key] = self[key]
+
+        return result
 
     def __str__(self):
         config_list = []
