@@ -3,7 +3,9 @@ import re
 
 class Regex(object):
     COMMENT = re.compile(r'\t*#')
+    MAINMENU = re.compile('mainmenu "(.+?)"')
     NEWLINE = re.compile(r'\n')
+    VARIABLE = re.compile(r'\$\(([A-Z_]+)\)')
 
 
 class Base(object):
@@ -97,6 +99,12 @@ class Base(object):
 
 
 class Kconfig(Base):
+    keywords = {
+        'comment': Regex.COMMENT,
+        'mainmenu': Regex.MAINMENU,
+        'newline': Regex.NEWLINE,
+    }
+
     def __init__(self, base=''):
         super().__init__(base, '')
 
@@ -114,6 +122,10 @@ class Kconfig(Base):
             'KERNELVERSION': '',
         })
 
+    def parse_mainmenu(self, match):
+        name = self.parse_variable(match.group(1))
+        self.append_child(Menu(self, name, True))
+
 
 class EntryBase(Base):
     def __init__(self, parent, name):
@@ -127,6 +139,25 @@ class EntryBase(Base):
 
     def __str__(self):
         return self.name
+
+
+class MultipleEntryBase(EntryBase):
+    keywords = [
+        'comment',
+        'newline',
+    ]
+
+    def __init__(self, parent, name):
+        super().__init__(parent, name)
+
+
+class Menu(MultipleEntryBase):
+    def __init__(self, parent, name, is_main=False):
+        super().__init__(parent, name)
+
+        self.is_main = is_main
+
+        self.log(self.PARSED)
 
 
 if __name__ == "__main__":
