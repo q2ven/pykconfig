@@ -5,6 +5,7 @@ class Regex(object):
     COMMENT = re.compile(r'\t*#')
     MAINMENU = re.compile('mainmenu "(.+?)"')
     NEWLINE = re.compile(r'\n')
+    SOURCE = re.compile(r'\s*source[\t\s]"(.+?)"')
     VARIABLE = re.compile(r'\$\(([A-Z_]+)\)')
 
 
@@ -120,6 +121,7 @@ class Kconfig(Base):
         self.variables.update({
             'ARCH': 'x86',
             'KERNELVERSION': '',
+            'SRCARCH': 'x86',
         })
 
     def parse_mainmenu(self, match):
@@ -145,10 +147,19 @@ class MultipleEntryBase(EntryBase):
     keywords = [
         'comment',
         'newline',
+        'source',
     ]
 
     def __init__(self, parent, name):
         super().__init__(parent, name)
+
+    def parse_source(self, match):
+        filename = self.parse_variable(match.group(1))
+
+        self.log(self.PARSED)
+        self.open(filename)
+        self.parse()
+        self.close()
 
 
 class Menu(MultipleEntryBase):
