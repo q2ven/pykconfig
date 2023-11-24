@@ -127,3 +127,7 @@ class EntryBase(Base):
 
     def __str__(self):
         return self.name
+
+
+if __name__ == "__main__":
+    Kconfig("/home/kuniyu/kernel/linux")
