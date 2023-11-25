@@ -11,6 +11,7 @@ class Regex(object):
     IMPLY = re.compile(r'(?:\t|\s+)imply (.+)')
     MAINMENU = re.compile('mainmenu "(.+?)"')
     MENU = re.compile(r'menu "(.+)"')
+    MENUCONFIG = re.compile(r'menuconfig ([0-9A-Z_]+)')
     NEWLINE = re.compile(r'\n')
     PROMPT = re.compile(r'(?:\t|\s+)prompt "(.+)"')
     RANGE = re.compile(r'(?:\t|\s+)range (.+)')
@@ -178,6 +179,7 @@ class MultipleEntryBase(EntryBase):
         'comment',
         'config',
         'menu',
+        'menuconfig',
         'newline',
         'source',
     ]
@@ -201,6 +203,9 @@ class MultipleEntryBase(EntryBase):
     def parse_menu(self, match):
         name = self.parse_variable(match.group(1))
         self.append_child(Menu(self, name))
+
+    def parse_menuconfig(self, match):
+        self.append_child(MenuConfig(self, match.group(1)))
 
     def parse_source(self, match):
         filename = self.parse_variable(match.group(1))
@@ -238,6 +243,7 @@ class Config(EntryBase):
         'config',
         'endmenu',
         'menu',
+        'menuconfig',
         'source',
     ]
 
@@ -269,6 +275,10 @@ class Config(EntryBase):
                     return
 
             self.log(self.PARSED)
+
+
+class MenuConfig(Config):
+    pass
 
 
 if __name__ == "__main__":
