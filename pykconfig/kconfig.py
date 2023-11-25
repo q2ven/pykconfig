@@ -6,9 +6,11 @@ class Regex(object):
     CONFIG = re.compile(r'config ([0-9A-Z_]+)')
     DEFAULT = re.compile(r'(?:\t|\s+)(default|def_bool|def_tristate) (.+)')
     DEPEND = re.compile(r'(?:\t|\s+)depends on (.+)')
+    ENDMENU = re.compile(r'endmenu')
     HELP = re.compile(r'(?:\t|\s+)help')
     IMPLY = re.compile(r'(?:\t|\s+)imply (.+)')
     MAINMENU = re.compile('mainmenu "(.+?)"')
+    MENU = re.compile(r'menu "(.+)"')
     NEWLINE = re.compile(r'\n')
     PROMPT = re.compile(r'(?:\t|\s+)prompt "(.+)"')
     RANGE = re.compile(r'(?:\t|\s+)range (.+)')
@@ -87,7 +89,12 @@ class Base(object):
             for keyword in self.keywords_bailout:
                 regex = getattr(Regex, keyword.upper())
                 if regex.match(self.line):
-                    self.undoline()
+                    func = getattr(self, f'parse_{keyword}', None)
+                    if func:
+                        func()
+                    else:
+                        self.undoline()
+
                     return
 
             for keyword in self.keywords:
@@ -170,8 +177,12 @@ class MultipleEntryBase(EntryBase):
     keywords = [
         'comment',
         'config',
+        'menu',
         'newline',
         'source',
+    ]
+    keywords_bailout = [
+        'endmenu',
     ]
 
     def __init__(self, parent, name):
@@ -179,6 +190,17 @@ class MultipleEntryBase(EntryBase):
 
     def parse_config(self, match):
         self.append_child(Config(self, match.group(1)))
+
+    def parse_endmenu(self):
+        if not isinstance(self, Menu) or self.is_main:
+            raise
+
+        self.parent.lines[-1] = self.lines[-1]
+        self.log(self.PARSED)
+
+    def parse_menu(self, match):
+        name = self.parse_variable(match.group(1))
+        self.append_child(Menu(self, name))
 
     def parse_source(self, match):
         filename = self.parse_variable(match.group(1))
@@ -214,6 +236,8 @@ class Config(EntryBase):
     ]
     keywords_bailout = [
         'config',
+        'endmenu',
+        'menu',
         'source',
     ]
 
