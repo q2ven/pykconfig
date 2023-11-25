@@ -4,9 +4,18 @@ import re
 class Regex(object):
     COMMENT = re.compile(r'\t*#')
     CONFIG = re.compile(r'config ([0-9A-Z_]+)')
+    DEFAULT = re.compile(r'(?:\t|\s+)(default|def_bool|def_tristate) (.+)')
+    DEPEND = re.compile(r'(?:\t|\s+)depends on (.+)')
+    HELP = re.compile(r'(?:\t|\s+)help')
+    IMPLY = re.compile(r'(?:\t|\s+)imply (.+)')
     MAINMENU = re.compile('mainmenu "(.+?)"')
     NEWLINE = re.compile(r'\n')
+    PROMPT = re.compile(r'(?:\t|\s+)prompt "(.+)"')
+    RANGE = re.compile(r'(?:\t|\s+)range (.+)')
+    SELECT = re.compile(r'(?:\t|\s+)select (.+)')
     SOURCE = re.compile(r'\s*source[\t\s]"(.+?)"')
+    TRISTATE = re.compile(r'(?:\t|\s+)tristate(?: (.+))?')
+    TYPE = re.compile(r'(?:\t|\s+)(bool|hex|int|string)')
     VARIABLE = re.compile(r'\$\(([A-Z_]+)\)')
 
 
@@ -192,7 +201,16 @@ class Menu(MultipleEntryBase):
 class Config(EntryBase):
     keywords = [
         'comment',
+        'default',
+        'depend',
+        'help',
+        'imply',
         'newline',
+        'prompt',
+        'range',
+        'select',
+        'tristate',
+        'type',
     ]
     keywords_bailout = [
         'config',
@@ -203,6 +221,18 @@ class Config(EntryBase):
         super().__init__(parent, name)
 
         self.log(self.PARSED)
+
+        def parse_misc(match):
+            self.log(self.PARSED)
+
+            while self.line.endswith('\\\n'):
+                self.readline()
+                self.log(self.PARSED)
+
+        for keyword in self.keywords:
+            func = getattr(self, f'parse_{keyword}', None)
+            if not func:
+                setattr(self, f'parse_{keyword}', parse_misc)
 
 
 if __name__ == "__main__":
