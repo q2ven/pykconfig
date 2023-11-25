@@ -3,6 +3,7 @@ import re
 
 class Regex(object):
     COMMENT = re.compile(r'\t*#')
+    CONFIG = re.compile(r'config ([0-9A-Z_]+)')
     MAINMENU = re.compile('mainmenu "(.+?)"')
     NEWLINE = re.compile(r'\n')
     SOURCE = re.compile(r'\s*source[\t\s]"(.+?)"')
@@ -158,12 +159,16 @@ class EntryBase(Base):
 class MultipleEntryBase(EntryBase):
     keywords = [
         'comment',
+        'config',
         'newline',
         'source',
     ]
 
     def __init__(self, parent, name):
         super().__init__(parent, name)
+
+    def parse_config(self, match):
+        self.append_child(Config(self, match.group(1)))
 
     def parse_source(self, match):
         filename = self.parse_variable(match.group(1))
@@ -179,6 +184,22 @@ class Menu(MultipleEntryBase):
         super().__init__(parent, name)
 
         self.is_main = is_main
+
+        self.log(self.PARSED)
+
+
+class Config(EntryBase):
+    keywords = [
+        'comment',
+        'newline',
+    ]
+    keywords_bailout = [
+        'config',
+        'source',
+    ]
+
+    def __init__(self, parent, name):
+        super().__init__(parent, name)
 
         self.log(self.PARSED)
 
