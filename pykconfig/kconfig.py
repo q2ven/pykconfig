@@ -234,6 +234,18 @@ class Config(EntryBase):
             if not func:
                 setattr(self, f'parse_{keyword}', parse_misc)
 
+    def parse_help(self, match):
+        self.log(self.PARSED)
+
+        while self.readline():
+            for keyword in self.keywords_bailout:
+                regex = getattr(Regex, keyword.upper())
+                if regex.match(self.line):
+                    self.undoline()
+                    return
+
+            self.log(self.PARSED)
+
 
 if __name__ == "__main__":
     Kconfig("/home/kuniyu/kernel/linux")
