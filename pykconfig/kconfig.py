@@ -23,6 +23,7 @@ class Base(object):
         'comment',
         'newline',
     ]
+    keywords_bailout = []
 
     def __init__(self, base, name):
         self.base = base
@@ -55,6 +56,12 @@ class Base(object):
             self.line = line
             return line
 
+    def undoline(self):
+        pos = self.files[-1].tell()
+        pos -= len(self.line)
+        self.files[-1].seek(pos)
+        self.lines[-1] -= 1
+
     def log(self, level):
         filename = self.files[-1].name.replace(f'{self.base}/', '')
         mark = '    parsed' if level == self.PARSED else 'not parsed'
@@ -66,6 +73,11 @@ class Base(object):
     def parse(self):
         while self.readline():
             parsed = False
+
+            for keyword in self.keywords_bailout:
+                regex = getattr(Regex, keyword.upper())
+                if regex.match(self.line):
+                    return
 
             for keyword in self.keywords:
                 regex = getattr(Regex, keyword.upper())
