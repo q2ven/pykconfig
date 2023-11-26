@@ -26,6 +26,7 @@ class Base(object):
         self.name = name
         self.files = []
         self.lines = []
+        self.children = []
 
     def __str__(self):
         return f'{self.__class__.__name__}({self.name})'
@@ -82,11 +83,32 @@ class Base(object):
     def parse_newline(self, match):
         self.log(self.PARSED)
 
+    def append_child(self, child):
+        self.children.append(child)
+        child.parse()
+        self.lines[-1] = child.lines[-1]
+
 
 class Kconfig(Base):
     def __init__(self, base=''):
         super().__init__(base, '')
 
+        self.kconfig = self
+
         self.open('Kconfig')
         self.parse()
         self.close()
+
+
+class EntryBase(Base):
+    def __init__(self, parent, name):
+        super().__init__(parent.kconfig.base, name)
+
+        self.kconfig = parent.kconfig
+        self.parent = parent
+        self.files = [parent.files[-1]]
+        self.lines = [parent.lines[-1]]
+        self.line = parent.line
+
+    def __str__(self):
+        return self.name
