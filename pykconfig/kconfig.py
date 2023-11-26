@@ -78,6 +78,7 @@ class Base(object):
             for keyword in self.keywords_bailout:
                 regex = getattr(Regex, keyword.upper())
                 if regex.match(self.line):
+                    self.undoline()
                     return
 
             for keyword in self.keywords:
