@@ -83,6 +83,13 @@ class Base(object):
     def parse_newline(self, match):
         self.log(self.PARSED)
 
+    def parse_variable(self, string):
+        for match in re.finditer(Regex.VARIABLE, string):
+            value = self.kconfig.variables[match.group(1)]
+            string = string.replace(match.group(0), value)
+
+        return string
+
     def append_child(self, child):
         self.children.append(child)
         child.parse()
@@ -94,10 +101,18 @@ class Kconfig(Base):
         super().__init__(base, '')
 
         self.kconfig = self
+        self.variables = {}
 
+        self.fill_unknown_variables()
         self.open('Kconfig')
         self.parse()
         self.close()
+
+    def fill_unknown_variables(self):
+        self.variables.update({
+            'ARCH': 'x86',
+            'KERNELVERSION': '',
+        })
 
 
 class EntryBase(Base):
