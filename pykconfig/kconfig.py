@@ -2,10 +2,12 @@ import re
 
 
 class Regex(object):
+    CHOICE = re.compile(r'choice')
     COMMENT = re.compile(r'\t*#')
     CONFIG = re.compile(r'config ([0-9A-Z_]+)')
     DEFAULT = re.compile(r'(?:\t|\s+)(default|def_bool|def_tristate) (.+)')
     DEPEND = re.compile(r'(?:\t|\s+)depends on (.+)')
+    ENDCHOICE = re.compile(r'endchoice')
     ENDIF = re.compile(r'endif')
     ENDMENU = re.compile(r'endmenu')
     HELP = re.compile(r'(?:\t|\s+)help')
@@ -178,6 +180,7 @@ class EntryBase(Base):
 
 class MultipleEntryBase(EntryBase):
     keywords = [
+        'choice',
         'comment',
         'config',
         'if',
@@ -187,6 +190,7 @@ class MultipleEntryBase(EntryBase):
         'source',
     ]
     keywords_bailout = [
+        'endchoice',
         'endif',
         'endmenu',
     ]
@@ -194,8 +198,18 @@ class MultipleEntryBase(EntryBase):
     def __init__(self, parent, name):
         super().__init__(parent, name)
 
+    def parse_choice(self, match):
+        self.append_child(Choice(self, ''))
+
     def parse_config(self, match):
         self.append_child(Config(self, match.group(1)))
+
+    def parse_endchoice(self):
+        if not isinstance(self, Choice):
+            raise
+
+        self.parent.lines[-1] = self.lines[-1]
+        self.log(self.PARSED)
 
     def parse_endif(self):
         if not isinstance(self, If):
@@ -246,6 +260,69 @@ class If(MultipleEntryBase):
         self.log(self.PARSED)
 
 
+class Choice(MultipleEntryBase):
+    keywords = [
+        'choice',
+        'config',
+        'comment',
+        'default',
+        'depend',
+        'help',
+        'menu',
+        'newline',
+        'prompt',
+        'source',
+    ]
+    keywords_bailout = [
+        'endchoice',
+        'endmenu',
+    ]
+
+    def __init__(self, parent, name):
+        super().__init__(parent, name)
+
+        self.logs = [(self.PARSED, self.line)]
+        self.flush = False
+
+        def parse_misc(match):
+            self.log(self.PARSED)
+
+        for keyword in self.keywords:
+            func = getattr(self, f'parse_{keyword}', None)
+            if not func:
+                setattr(self, f'parse_{keyword}', parse_misc)
+
+    def log(self, level):
+        self.logs.append((level, self.line))
+
+        if not self.flush:
+            return
+
+        self.lines[-1] -= len(self.logs)
+
+        for level, line in self.logs:
+            self.line = line
+            self.lines[-1] += 1
+            super().log(level)
+
+        self.logs = []
+
+    def parse_help(self, match):
+        self.log(self.PARSED)
+
+        while self.readline():
+            if Regex.CONFIG.match(self.line):
+                self.undoline()
+                return
+
+            self.log(self.PARSED)
+
+    def parse_prompt(self, match):
+        self.name = match.group(1)
+        self.flush = True
+        self.log(self.PARSED)
+
+
 class Config(EntryBase):
     keywords = [
         'comment',
@@ -261,7 +338,9 @@ class Config(EntryBase):
         'type',
     ]
     keywords_bailout = [
+        'choice',
         'config',
+        'endchoice',
         'endif',
         'endmenu',
         'if',
