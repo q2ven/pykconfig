@@ -6,8 +6,10 @@ class Regex(object):
     CONFIG = re.compile(r'config ([0-9A-Z_]+)')
     DEFAULT = re.compile(r'(?:\t|\s+)(default|def_bool|def_tristate) (.+)')
     DEPEND = re.compile(r'(?:\t|\s+)depends on (.+)')
+    ENDIF = re.compile(r'endif')
     ENDMENU = re.compile(r'endmenu')
     HELP = re.compile(r'(?:\t|\s+)help')
+    IF = re.compile(r'if (.+)')
     IMPLY = re.compile(r'(?:\t|\s+)imply (.+)')
     MAINMENU = re.compile('mainmenu "(.+?)"')
     MENU = re.compile(r'menu "(.+)"')
@@ -178,12 +180,14 @@ class MultipleEntryBase(EntryBase):
     keywords = [
         'comment',
         'config',
+        'if',
         'menu',
         'menuconfig',
         'newline',
         'source',
     ]
     keywords_bailout = [
+        'endif',
         'endmenu',
     ]
 
@@ -193,12 +197,22 @@ class MultipleEntryBase(EntryBase):
     def parse_config(self, match):
         self.append_child(Config(self, match.group(1)))
 
+    def parse_endif(self):
+        if not isinstance(self, If):
+            raise
+
+        self.parent.lines[-1] = self.lines[-1]
+        self.log(self.PARSED)
+
     def parse_endmenu(self):
         if not isinstance(self, Menu) or self.is_main:
             raise
 
         self.parent.lines[-1] = self.lines[-1]
         self.log(self.PARSED)
+
+    def parse_if(self, match):
+        self.append_child(If(self, match.group(1)))
 
     def parse_menu(self, match):
         name = self.parse_variable(match.group(1))
@@ -225,6 +239,13 @@ class Menu(MultipleEntryBase):
         self.log(self.PARSED)
 
 
+class If(MultipleEntryBase):
+    def __init__(self, parent, name):
+        super().__init__(parent, name)
+
+        self.log(self.PARSED)
+
+
 class Config(EntryBase):
     keywords = [
         'comment',
@@ -241,7 +262,9 @@ class Config(EntryBase):
     ]
     keywords_bailout = [
         'config',
+        'endif',
         'endmenu',
+        'if',
         'menu',
         'menuconfig',
         'source',
